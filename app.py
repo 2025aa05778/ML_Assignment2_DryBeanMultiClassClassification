@@ -11,8 +11,31 @@ from sklearn.metrics import f1_score, matthews_corrcoef, confusion_matrix, roc_a
 
 st.set_page_config(page_title="Dry Bean Classification", layout="wide")
 
+# -------------------------
+# Title & Description
+# -------------------------
+
 st.title("Dry Bean Multi-Class Classification App")
 st.write("Upload CSV file and select a trained model to make predictions.")
+
+# -------------------------
+# Quick Download Sample Test File
+# -------------------------
+
+st.markdown("### Quick Test Dataset Download")
+
+sample_file = "test_data_with_labels.csv"
+
+if os.path.exists(sample_file):
+    with open(sample_file, "rb") as f:
+        st.download_button(
+            label="Download Sample Test CSV File",
+            data=f,
+            file_name="test_data_with_labels.csv",
+            mime="text/csv"
+        )
+else:
+    st.info("Sample test file not found.")
 
 # -------------------------
 # Load Saved Models
@@ -55,9 +78,11 @@ model_option = st.selectbox(
 if uploaded_file is not None:
 
     data = pd.read_csv(uploaded_file)
-    st.write("Preview of Uploaded Data:")
+
+    st.subheader("Preview of Uploaded Data")
     st.dataframe(data.head())
 
+    # Separate features and labels
     if "Class" in data.columns:
         X_input = data.drop("Class", axis=1)
         y_true = data["Class"]
@@ -65,7 +90,7 @@ if uploaded_file is not None:
         X_input = data
         y_true = None
 
-    # Select model
+    # Model selection
     if model_option == "Logistic Regression":
         model = log_model
         X_processed = scaler.transform(X_input)
@@ -86,7 +111,7 @@ if uploaded_file is not None:
         model = rf_model
         X_processed = X_input
 
-    else:
+    else:  # XGBoost
         model = xgb_model
         X_processed = X_input
 
@@ -111,13 +136,12 @@ if uploaded_file is not None:
         f1 = f1_score(y_true, predictions, average="macro")
         mcc = matthews_corrcoef(y_true, predictions)
 
-        # -------- AUC Calculation --------
+        # AUC Calculation
         auc = None
         if hasattr(model, "predict_proba"):
             try:
                 y_prob = model.predict_proba(X_processed)
 
-                # Encode y_true for AUC if needed
                 if model_option == "XGBoost":
                     y_true_encoded = label_encoder.transform(y_true)
                     auc = roc_auc_score(
@@ -156,6 +180,9 @@ if uploaded_file is not None:
 
         fig, ax = plt.subplots(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+
         st.pyplot(fig)
 
     else:
